@@ -1,7 +1,7 @@
 #!/usr/pkg/bin/python3.9
 
 #
-# Time-stamp: <2022/03/05 13:34:54 (CST) daisuke>
+# Time-stamp: <2022/03/05 21:13:30 (CST) daisuke>
 #
 
 #
@@ -40,6 +40,9 @@ import subprocess
 
 # importing shutil module
 import shutil
+
+# importing re module
+import re
 
 # date/time
 datetime_now = datetime.datetime.now ()
@@ -91,6 +94,10 @@ sleep_default     = 3
 sleep_help        = "sleep time after fetching stream data (default: %d sec)" \
     % sleep_default
 
+start_default = '00:00'
+start_help    = "start time of program in hh:mm format (default: %s)" \
+    % start_default
+
 # construction of parser object
 desc = 'NHK radio program recording script'
 parser = argparse.ArgumentParser (description=desc)
@@ -100,7 +107,7 @@ parser.add_argument ('-c', '--channel', choices=list_channel, \
                      default=channel_default, help=channel_help)
 parser.add_argument ('-p', '--program', default=program_default, \
                      help=program_help)
-parser.add_argument ('-t', '--time', type=int, default=duration_default, \
+parser.add_argument ('-d', '--duration', type=int, default=duration_default, \
                      help=duration_help)
 parser.add_argument ('-s', '--sleep', type=int, default=sleep_default, \
                      help=sleep_help)
@@ -110,6 +117,8 @@ parser.add_argument ('-w', '--temporary-directory', default=dir_tmp_default, \
                      help=dir_tmp_help)
 parser.add_argument ('-f', '--ffmpeg', default=ffmpeg_default, \
                      help=ffmpeg_help)
+parser.add_argument ('-t', '--hhmm', default=start_default, \
+                     help=start_help)
 parser.add_argument ('-v', '--verbose', action='count', \
                      default=verbose_default, help=verbose_help)
 
@@ -119,11 +128,12 @@ args = parser.parse_args ()
 # parameters
 channel        = args.channel
 program_name   = args.program
-duration_min   = args.time
+duration_min   = args.duration
 sleep_sec      = args.sleep
 dir_radio      = args.radio_directory
 dir_tmp        = args.temporary_directory
 command_ffmpeg = args.ffmpeg
+start_hhmm     = args.hhmm
 verbosity      = args.verbose
 
 # time duration in second
@@ -132,8 +142,22 @@ duration_sec = duration_min * 60
 # m3u8 URL
 url_m3u8 = dic_m3u8[channel]
 
+# start time hh:mm
+pattern_hhmm = re.compile ('(\d+):(\d+)')
+match_hhmm   = re.search (pattern_hhmm, start_hhmm)
+if (match_hhmm):
+    # matched patterns
+    start_hh = int (match_hhmm.group (1))
+    start_mm = int (match_hhmm.group (2))
+    hhmm_str = "%02d%02d" % (start_hh, start_mm)
+else:
+    # printing message
+    print ("# something is wrong with start time \"%s\"!" % start_hhmm)
+    # exit
+    sys.exit ()
+
 # file names
-basename     = "%s_%s" % (program_name, date_str)
+basename     = "%s_%s_%s" % (program_name, date_str, hhmm_str)
 file_aac     = "%s/%s.aac" % (dir_radio, basename)
 file_m4a_tmp = "%s/%s_tmp.m4a" % (dir_tmp, basename)
 file_aac_tmp = "%s/%s_tmp.aac" % (dir_tmp, basename)
